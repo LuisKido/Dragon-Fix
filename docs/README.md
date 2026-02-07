@@ -1,8 +1,6 @@
 # 🐉 Dragon App — Fix Academy
 
 <p align="center">
-  <img src="assets/logo-placeholder.png" alt="Dragon App Logo" width="200"/>
-  <br/>
   <em>Módulo de estrategia, validación y seguimiento de setups para todos los alumnos de GPRO</em>
 </p>
 
