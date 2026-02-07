@@ -163,3 +163,14 @@ setup-reviewer/
   <br/>
   <sub>Documentación Técnica v1.2 · Febrero 2026 · Incluye integración con Calculadora + OCR Capturas Móvil</sub>
 </p>
+
+---
+
+## ✍️ Créditos
+
+| Rol | Nombre |
+|-----|--------|
+| **Autor & Creador del proyecto** | Luis Kido ([@LuisKido](https://github.com/LuisKido)) |
+| **Documentación técnica** | Generada con asistencia de GitHub Copilot (Claude) |
+
+<sub>La redacción, estructura y revisión de esta documentación fue realizada con la ayuda de inteligencia artificial. El diseño del módulo, las reglas de negocio y las decisiones de arquitectura son autoría de Luis Kido.</sub>
