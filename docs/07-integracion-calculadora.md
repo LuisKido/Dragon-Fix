@@ -186,89 +186,94 @@ AHORA (con calculadora):
 
 ---
 
-## 🔧 Pseudocódigo de Integración
+## 🔧 Código de Integración
 
 ### Auto-Baseline desde Calculadora
 
-```
-FUNCTION SyncBaselineFromCalculator(mentorId, trackId, seasonId)
-
+```csharp
+public async Task<string> SyncBaselineFromCalculatorAsync(int mentorId, int trackId, int seasonId)
+{
     // 1. Buscar el último cálculo del mentor para esa pista
-    calcSetup = CalcDB.GetLatestSetup(mentorId, trackId, seasonId)
-    
-    IF calcSetup IS NULL
-        RETURN "No hay cálculo disponible para esta pista"
-    
-    // 2. Crear o actualizar la Base de Oro
-    baseline = SetupBaselines.FindOrCreate(trackId, seasonId, mentorId)
-    
-    baseline.Wings      = calcSetup.Wings
-    baseline.Engine     = calcSetup.Engine
-    baseline.Brakes     = calcSetup.Brakes
-    baseline.Gear       = calcSetup.Gear
-    baseline.Suspension = calcSetup.Suspension
-    baseline.Source     = "CALCULATOR"
-    baseline.CalcSessionId = calcSetup.SessionId
-    baseline.Notes      = "Auto-importado desde calculadora — " + NOW()
-    
-    baseline.Save()
-    
-    RETURN "Base de Oro actualizada desde calculadora ✅"
+    var calcSetup = await _calcDb.GetLatestSetupAsync(mentorId, trackId, seasonId);
 
-END FUNCTION
+    if (calcSetup is null)
+        return "No hay cálculo disponible para esta pista";
+
+    // 2. Crear o actualizar la Base de Oro
+    var baseline = await _baselines.FindOrCreateAsync(trackId, seasonId, mentorId);
+
+    baseline.Wings          = calcSetup.Wings;
+    baseline.Engine         = calcSetup.Engine;
+    baseline.Brakes         = calcSetup.Brakes;
+    baseline.Gear           = calcSetup.Gear;
+    baseline.Suspension     = calcSetup.Suspension;
+    baseline.Source         = BaselineSource.Calculator;
+    baseline.CalcSessionId  = calcSetup.SessionId;
+    baseline.Notes          = $"Auto-importado desde calculadora — {DateTime.UtcNow:g}";
+
+    await _baselines.SaveAsync(baseline);
+
+    return "Base de Oro actualizada desde calculadora ✅";
+}
 ```
 
 ### Comparar Setup del Novato vs Calculadora
 
-```
-FUNCTION CompareWithCalculator(entryId) → ComparisonResult
+```csharp
+public async Task<ComparisonResult> CompareWithCalculatorAsync(int entryId)
+{
+    var entry = await _entries.GetAsync(entryId);
+    var setup = await _setups.GetByEntryAsync(entryId);
 
-    entry = StudentRaceEntries.Get(entryId)
-    setup = Setups.GetByEntry(entryId)
-    
     // 1. Obtener el setup calculado para esta pista/temporada
-    race = Races.Get(entry.RaceId)
-    calcSetup = CalcDB.GetLatestSetup(
-        trackId: race.TrackId, 
+    var race = await _races.GetAsync(entry.RaceId);
+    var calcSetup = await _calcDb.GetLatestSetupAsync(
+        trackId: race.TrackId,
         seasonId: race.SeasonId
-    )
-    
-    IF calcSetup IS NULL
-        RETURN { available: false, message: "Sin datos de calculadora" }
-    
-    // 2. Calcular desviaciones
-    deviations = {
-        wings:      CalcDeviation(setup.Wings, calcSetup.Wings),
-        engine:     CalcDeviation(setup.Engine, calcSetup.Engine),
-        brakes:     CalcDeviation(setup.Brakes, calcSetup.Brakes),
-        gear:       CalcDeviation(setup.Gear, calcSetup.Gear),
-        suspension: CalcDeviation(setup.Suspension, calcSetup.Suspension)
-    }
-    
-    avgDeviation = Average(deviations.Values)
-    
-    // 3. Registrar el cruce
-    CalcSetupLink.Create({
-        EntryId:           entryId,
-        CalcSessionId:     calcSetup.SessionId,
-        CalcWings:         calcSetup.Wings,
-        CalcEngine:        calcSetup.Engine,
-        CalcBrakes:        calcSetup.Brakes,
-        CalcGear:          calcSetup.Gear,
-        CalcSuspension:    calcSetup.Suspension,
-        DeviationPercent:  avgDeviation
-    })
-    
-    RETURN {
-        available: true,
-        calculated: calcSetup,
-        actual: setup,
-        deviations: deviations,
-        avgDeviation: avgDeviation,
-        status: avgDeviation > 10 ? "HIGH_DEVIATION" : "OK"
-    }
+    );
 
-END FUNCTION
+    if (calcSetup is null)
+        return new ComparisonResult { Available = false, Message = "Sin datos de calculadora" };
+
+    // 2. Calcular desviaciones
+    var deviations = new Dictionary<string, decimal>
+    {
+        ["Wings"]      = CalcDeviation(setup.Wings, calcSetup.Wings),
+        ["Engine"]     = CalcDeviation(setup.Engine, calcSetup.Engine),
+        ["Brakes"]     = CalcDeviation(setup.Brakes, calcSetup.Brakes),
+        ["Gear"]       = CalcDeviation(setup.Gear, calcSetup.Gear),
+        ["Suspension"] = CalcDeviation(setup.Suspension, calcSetup.Suspension)
+    };
+
+    var avgDeviation = deviations.Values.Average();
+
+    // 3. Registrar el cruce
+    await _calcSetupLinks.CreateAsync(new CalcSetupLink
+    {
+        EntryId          = entryId,
+        CalcSessionId    = calcSetup.SessionId,
+        CalcWings        = calcSetup.Wings,
+        CalcEngine       = calcSetup.Engine,
+        CalcBrakes       = calcSetup.Brakes,
+        CalcGear         = calcSetup.Gear,
+        CalcSuspension   = calcSetup.Suspension,
+        DeviationPercent = avgDeviation,
+        LinkedAt         = DateTime.UtcNow
+    });
+
+    return new ComparisonResult
+    {
+        Available    = true,
+        Calculated   = calcSetup,
+        Actual       = setup,
+        Deviations   = deviations,
+        AvgDeviation = avgDeviation,
+        Status       = avgDeviation > 10 ? "HIGH_DEVIATION" : "OK"
+    };
+}
+
+private static decimal CalcDeviation(int actual, int expected)
+    => expected == 0 ? 0 : Math.Abs(actual - expected) / (decimal)expected * 100;
 ```
 
 ---

@@ -62,40 +62,46 @@ $$\text{Si } \text{Combustible Necesario} > \text{Capacidad del Tanque} \Rightar
 | Hard | 0.50 | ×1.03 | ×0.98 |
 | Rain | 0.70 | ×1.00 | ×0.95 |
 
-### Pseudocódigo
+### Código
 
-```
-FUNCTION ValidateFuel(strategy, raceInfo) → ValidationResult
+```csharp
+public ValidationResult ValidateFuel(Strategy strategy, RaceInfo raceInfo)
+{
+    var consumoBase = GetConsumoByCompound(strategy.TyreCompound);
 
-    consumoBase = GetConsumoByCompound(strategy.TyreCompound)
-    
     // Aplicar factores
-    IF raceInfo.Temperature > 30
-        consumoBase *= FACTOR_CALIENTE[strategy.TyreCompound]
-    IF raceInfo.RainProbability > 50
-        consumoBase *= FACTOR_LLUVIA[strategy.TyreCompound]
-    
-    combustibleNecesario = consumoBase * raceInfo.TotalKm
-    
-    IF combustibleNecesario > strategy.FuelLoad
-        RETURN Error(
-            level: "CRITICAL",
-            message: "🔴 ¡Te vas a quedar sin combustible!",
-            detail: "Necesitas {combustibleNecesario}L pero llevas {strategy.FuelLoad}L",
-            suggestion: "Sube el fuel a mínimo {ceil(combustibleNecesario + margen)}L"
-        )
-    
-    IF combustibleNecesario > strategy.FuelLoad * 0.90
-        RETURN Warning(
-            level: "WARNING",
-            message: "🟡 Combustible justo",
-            detail: "Margen de solo {diferencia}L",
-            suggestion: "Considera subir {sugerencia}L por seguridad"
-        )
-    
-    RETURN OK("✅ Combustible OK — Margen de {margen}L")
+    if (raceInfo.Temperature > 30)
+        consumoBase *= FactorCaliente[strategy.TyreCompound];
+    if (raceInfo.RainProbability > 50)
+        consumoBase *= FactorLluvia[strategy.TyreCompound];
 
-END FUNCTION
+    var combustibleNecesario = consumoBase * raceInfo.TotalKm;
+
+    if (combustibleNecesario > strategy.FuelLoad)
+    {
+        var deficit = combustibleNecesario - strategy.FuelLoad;
+        return ValidationResult.Error(
+            level: Severity.Critical,
+            message: "🔴 ¡Te vas a quedar sin combustible!",
+            detail: $"Necesitas {combustibleNecesario:F1}L pero llevas {strategy.FuelLoad}L",
+            suggestion: $"Sube el fuel a mínimo {Math.Ceiling(combustibleNecesario + MargenSeguridad)}L"
+        );
+    }
+
+    if (combustibleNecesario > strategy.FuelLoad * 0.90m)
+    {
+        var diferencia = strategy.FuelLoad - combustibleNecesario;
+        return ValidationResult.Warning(
+            level: Severity.Warning,
+            message: "🟡 Combustible justo",
+            detail: $"Margen de solo {diferencia:F1}L",
+            suggestion: $"Considera subir {Math.Ceiling(MargenSeguridad - diferencia)}L por seguridad"
+        );
+    }
+
+    var margen = strategy.FuelLoad - combustibleNecesario;
+    return ValidationResult.Ok($"✅ Combustible OK — Margen de {margen:F1}L");
+}
 ```
 
 ### Ejemplo Visual
@@ -137,43 +143,48 @@ Cada compuesto tiene un rango óptimo de temperatura. Usar el compuesto equivoca
 | **Hard** | 28°C | 32-42°C | 48°C | BAJA |
 | **Rain** | 5°C | 10-30°C | 35°C | VARIABLE |
 
-### Pseudocódigo
+### Código
 
-```
-FUNCTION ValidateTyres(strategy, conditions) → ValidationResult
+```csharp
+public ValidationResult ValidateTyres(Strategy strategy, WeatherConditions conditions)
+{
+    var rango = GetOptimalRange(strategy.TyreCompound);
+    var temp = conditions.Temperature;
 
-    rango = GetOptimalRange(strategy.TyreCompound)
-    temp  = conditions.Temperature
-    
-    IF temp > rango.Max
-        deficit = temp - rango.Max
-        
-        IF deficit > 10
-            RETURN Error(
-                level: "CRITICAL",
+    if (temp > rango.Max)
+    {
+        var deficit = temp - rango.Max;
+
+        if (deficit > 10)
+        {
+            return ValidationResult.Error(
+                level: Severity.Critical,
                 message: "🔴 ¡Te vas a quedar sin goma en la vuelta 10!",
-                detail: "{strategy.TyreCompound} no soporta {temp}°C (máx: {rango.Max}°C)",
-                suggestion: "Cambia a {RecommendCompound(temp)}"
-            )
-        ELSE
-            RETURN Warning(
-                level: "WARNING",
-                message: "🟡 Neumáticos en riesgo",
-                detail: "Temperatura {deficit}°C por encima del óptimo",
-                suggestion: "Considera usar {RecommendCompound(temp)}"
-            )
-    
-    IF temp < rango.Min
-        RETURN Warning(
-            level: "WARNING",
-            message: "🟡 Neumáticos fríos — poca adherencia",
-            detail: "{strategy.TyreCompound} necesita mínimo {rango.Min}°C",
-            suggestion: "Baja a {RecommendCompound(temp)} para mejor grip"
-        )
-    
-    RETURN OK("✅ Neumáticos OK — En rango óptimo")
+                detail: $"{strategy.TyreCompound} no soporta {temp}°C (máx: {rango.Max}°C)",
+                suggestion: $"Cambia a {RecommendCompound(temp)}"
+            );
+        }
 
-END FUNCTION
+        return ValidationResult.Warning(
+            level: Severity.Warning,
+            message: "🟡 Neumáticos en riesgo",
+            detail: $"Temperatura {deficit}°C por encima del óptimo",
+            suggestion: $"Considera usar {RecommendCompound(temp)}"
+        );
+    }
+
+    if (temp < rango.Min)
+    {
+        return ValidationResult.Warning(
+            level: Severity.Warning,
+            message: "🟡 Neumáticos fríos — poca adherencia",
+            detail: $"{strategy.TyreCompound} necesita mínimo {rango.Min}°C",
+            suggestion: $"Baja a {RecommendCompound(temp)} para mejor grip"
+        );
+    }
+
+    return ValidationResult.Ok("✅ Neumáticos OK — En rango óptimo");
+}
 ```
 
 ### Ejemplo Visual
@@ -208,60 +219,73 @@ Caso: Novato elige Extra Soft con 35°C
 
 ### Lógica
 
-```
-SI probabilidad_lluvia > 0% Y no hay pitstop con Rain tyres configurado:
-    → ALERTA
-    
-SI probabilidad_lluvia > 60% Y el compuesto principal NO es Rain:
-    → ALERTA CRÍTICA
+```csharp
+// Si hay probabilidad de lluvia y no hay pit stop con Rain tyres:
+if (forecast.RainProbability > 0 && !strategy.PitStops.Any(p => p.TyreCompound == "Rain"))
+    // → ALERTA
+
+// Si la probabilidad es alta y el compuesto principal no es Rain:
+if (forecast.RainProbability > 60 && strategy.TyreCompound != "Rain")
+    // → ALERTA CRÍTICA
 ```
 
-### Pseudocódigo
+### Código
 
-```
-FUNCTION ValidateWeather(strategy, forecast) → ValidationResult
+```csharp
+public List<ValidationResult> ValidateWeather(Strategy strategy, WeatherForecast forecast)
+{
+    var results = new List<ValidationResult>();
 
-    results = []
-    
     // Check 1: Lluvia sin pits de lluvia
-    IF forecast.RainProbability > 0
-        hasPitConLluvia = strategy.PitStops.Any(p => p.TyreCompound == "Rain")
-        
-        IF NOT hasPitConLluvia
-            IF forecast.RainProbability > 60
-                results.Add(Error(
-                    level: "CRITICAL",
+    if (forecast.RainProbability > 0)
+    {
+        var hasPitConLluvia = strategy.PitStops.Any(p => p.TyreCompound == "Rain");
+
+        if (!hasPitConLluvia)
+        {
+            if (forecast.RainProbability > 60)
+            {
+                results.Add(ValidationResult.Error(
+                    level: Severity.Critical,
                     message: "🔴 ¡Lluvia muy probable y sin Rain tyres!",
-                    detail: "{forecast.RainProbability}% de probabilidad de lluvia",
+                    detail: $"{forecast.RainProbability}% de probabilidad de lluvia",
                     suggestion: "Configura al menos 1 pit stop con Rain tyres"
-                ))
-            ELSE
-                results.Add(Warning(
-                    level: "WARNING",
+                ));
+            }
+            else
+            {
+                results.Add(ValidationResult.Warning(
+                    level: Severity.Warning,
                     message: "🟡 Posible lluvia — sin plan B",
-                    detail: "{forecast.RainProbability}% de probabilidad",
+                    detail: $"{forecast.RainProbability}% de probabilidad",
                     suggestion: "Considera tener un pit con Rain por precaución"
-                ))
-    
+                ));
+            }
+        }
+    }
+
     // Check 2: Rain tyres sin lluvia
-    IF forecast.RainProbability == 0
-        usaRain = strategy.TyreCompound == "Rain" 
-                  OR strategy.PitStops.Any(p => p.TyreCompound == "Rain")
-        
-        IF usaRain
-            results.Add(Warning(
-                level: "WARNING",
+    if (forecast.RainProbability == 0)
+    {
+        var usaRain = strategy.TyreCompound == "Rain"
+                      || strategy.PitStops.Any(p => p.TyreCompound == "Rain");
+
+        if (usaRain)
+        {
+            results.Add(ValidationResult.Warning(
+                level: Severity.Warning,
                 message: "🟡 Rain tyres sin lluvia prevista",
                 detail: "Los Rain son más lentos en seco",
                 suggestion: "Cambia a un compuesto de seco"
-            ))
-    
-    IF results.IsEmpty()
-        RETURN OK("✅ Estrategia climática OK")
-    
-    RETURN results
+            ));
+        }
+    }
 
-END FUNCTION
+    if (!results.Any())
+        results.Add(ValidationResult.Ok("✅ Estrategia climática OK"));
+
+    return results;
+}
 ```
 
 ### Ejemplo Visual
@@ -293,53 +317,62 @@ Si la calculadora tiene datos para esta pista/temporada, comparar automáticamen
 
 $$\text{Desviación} = \frac{1}{N} \sum_{i=1}^{N} \left| \frac{\text{Setup}_{alumno,i} - \text{Setup}_{calc,i}}{\text{Setup}_{calc,i}} \right| \times 100$$
 
-### Pseudocódigo
+### Código
 
-```
-FUNCTION ValidateAgainstCalculator(setup, raceInfo) → ValidationResult
-
+```csharp
+public ValidationResult ValidateAgainstCalculator(SetupData setup, RaceInfo raceInfo)
+{
     // 1. Buscar setup calculado para esta pista
-    calcSetup = CalcDB.GetLatestSetup(raceInfo.TrackId, raceInfo.SeasonId)
-    
-    IF calcSetup IS NULL
-        RETURN Info(
-            level: "INFO",
+    var calcSetup = _calcDb.GetLatestSetup(raceInfo.TrackId, raceInfo.SeasonId);
+
+    if (calcSetup is null)
+    {
+        return ValidationResult.Info(
+            level: Severity.Info,
             message: "ℹ️ Sin datos de calculadora para esta pista",
             suggestion: "Usa la calculadora para generar un setup de referencia"
-        )
-    
-    // 2. Calcular desviación por componente
-    deviations = {
-        wings:      |setup.Wings - calcSetup.Wings| / calcSetup.Wings * 100,
-        engine:     |setup.Engine - calcSetup.Engine| / calcSetup.Engine * 100,
-        brakes:     |setup.Brakes - calcSetup.Brakes| / calcSetup.Brakes * 100,
-        gear:       |setup.Gear - calcSetup.Gear| / calcSetup.Gear * 100,
-        suspension: |setup.Suspension - calcSetup.Suspension| / calcSetup.Suspension * 100
+        );
     }
-    
-    avgDeviation = Average(deviations)
-    
-    // 3. Evaluar
-    IF avgDeviation > 20
-        RETURN Warning(
-            level: "WARNING",
-            message: "🟡 Setup muy desviado de la calculadora",
-            detail: "Desviación promedio: {avgDeviation}%",
-            suggestion: "Revisa los valores — la calculadora sugiere W:{calcSetup.Wings}...",
-            deviations: deviations
-        )
-    
-    IF avgDeviation > 10
-        RETURN Info(
-            level: "INFO",
-            message: "ℹ️ Diferencias moderadas con la calculadora",
-            detail: "Desviación: {avgDeviation}%",
-            deviations: deviations
-        )
-    
-    RETURN OK("✅ Setup alineado con la calculadora (desvío: {avgDeviation}%)")
 
-END FUNCTION
+    // 2. Calcular desviación por componente
+    var deviations = new Dictionary<string, decimal>
+    {
+        ["Wings"]      = CalcDeviation(setup.Wings, calcSetup.Wings),
+        ["Engine"]     = CalcDeviation(setup.Engine, calcSetup.Engine),
+        ["Brakes"]     = CalcDeviation(setup.Brakes, calcSetup.Brakes),
+        ["Gear"]       = CalcDeviation(setup.Gear, calcSetup.Gear),
+        ["Suspension"] = CalcDeviation(setup.Suspension, calcSetup.Suspension)
+    };
+
+    var avgDeviation = deviations.Values.Average();
+
+    // 3. Evaluar
+    if (avgDeviation > 20)
+    {
+        return ValidationResult.Warning(
+            level: Severity.Warning,
+            message: "🟡 Setup muy desviado de la calculadora",
+            detail: $"Desviación promedio: {avgDeviation:F1}%",
+            suggestion: $"Revisa los valores — la calculadora sugiere W:{calcSetup.Wings}...",
+            deviations: deviations
+        );
+    }
+
+    if (avgDeviation > 10)
+    {
+        return ValidationResult.Info(
+            level: Severity.Info,
+            message: "ℹ️ Diferencias moderadas con la calculadora",
+            detail: $"Desviación: {avgDeviation:F1}%",
+            deviations: deviations
+        );
+    }
+
+    return ValidationResult.Ok($"✅ Setup alineado con la calculadora (desvío: {avgDeviation:F1}%)");
+}
+
+private static decimal CalcDeviation(int actual, int expected)
+    => expected == 0 ? 0 : Math.Abs(actual - expected) / (decimal)expected * 100;
 ```
 
 ### Ejemplo Visual

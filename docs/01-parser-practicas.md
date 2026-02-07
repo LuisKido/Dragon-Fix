@@ -90,46 +90,54 @@ Muchos novatos usan la **app de celular de GPRO** en lugar del navegador web. De
 
 ### Motor OCR — Lógica de Extracción
 
-```
-FUNCTION ParseScreenshot(imageFile: File) → PracticeResult
-
+```csharp
+public async Task<PracticeResult> ParseScreenshotAsync(IFormFile imageFile)
+{
     // 1. Validar imagen
-    IF NOT IsValidImage(imageFile)
-        RETURN Error("Formato no soportado. Usa PNG, JPG o WebP.")
-    
-    IF imageFile.Size > MAX_SIZE_MB
-        RETURN Error("La imagen es muy pesada. Máximo 10 MB.")
-    
+    var validExtensions = new[] { ".png", ".jpg", ".jpeg", ".webp" };
+    var extension = Path.GetExtension(imageFile.FileName).ToLower();
+
+    if (!validExtensions.Contains(extension))
+        throw new InvalidImageException("Formato no soportado. Usa PNG, JPG o WebP.");
+
+    if (imageFile.Length > MaxSizeBytes)
+        throw new InvalidImageException("La imagen es muy pesada. Máximo 10 MB.");
+
     // 2. Pre-procesamiento de imagen
-    processedImage = PreprocessImage(imageFile)
-        → Convertir a escala de grises
-        → Ajustar contraste y brillo
-        → Recortar bordes del celular (status bar, nav bar)
-        → Enderezar si está rotada (deskew)
-    
+    using var stream = imageFile.OpenReadStream();
+    var processedImage = _imagePreprocessor.Process(stream, new PreprocessOptions
+    {
+        ConvertToGrayscale = true,
+        AdjustContrast     = true,
+        CropStatusBar      = true,   // Recortar barra de estado del celular
+        CropNavBar         = true,   // Recortar barra de navegación inferior
+        Deskew             = true    // Enderezar si está rotada
+    });
+
     // 3. OCR — Extraer texto de la imagen
-    ocrResult = OCR.ExtractText(processedImage)
-    
+    var ocrResult = await _ocrEngine.ExtractTextAsync(processedImage);
+
     // 4. Evaluar confianza del OCR
-    IF ocrResult.Confidence < 0.70
-        RETURN Error(
+    if (ocrResult.Confidence < 0.70m)
+    {
+        throw new OcrLowConfidenceException(
             message: "No se pudo leer la captura con suficiente confianza",
             suggestion: "Intenta con una captura más nítida o pega el texto manualmente",
             confidence: ocrResult.Confidence
-        )
-    
-    // 5. Pasar al parser de texto normal
-    result = ParsePracticeText(ocrResult.Text)
-    result.Source = "SCREENSHOT"
-    result.OcrConfidence = ocrResult.Confidence
-    
-    // 6. Agregar warnings si confianza es media
-    IF ocrResult.Confidence < 0.85
-        result.Warnings.Add("⚠️ Confianza OCR media ({ocrResult.Confidence}%). Verifica los valores.")
-    
-    RETURN result
+        );
+    }
 
-END FUNCTION
+    // 5. Pasar al parser de texto normal
+    var result = ParsePracticeText(ocrResult.Text);
+    result.Source = SetupSource.Screenshot;
+    result.OcrConfidence = ocrResult.Confidence;
+
+    // 6. Agregar warnings si confianza es media
+    if (ocrResult.Confidence < 0.85m)
+        result.Warnings.Add($"⚠️ Confianza OCR media ({ocrResult.Confidence:P0}). Verifica los valores.");
+
+    return result;
+}
 ```
 
 ### Pre-procesamiento de Imagen
@@ -197,42 +205,72 @@ El feedback del piloto se traduce a **acciones concretas sobre el setup**:
 
 ---
 
-## ⚙️ Pseudocódigo del Parser
+## ⚙️ Código del Parser
 
-```
-FUNCTION ParsePracticeText(rawText: string) → PracticeResult
-
-    result = new PracticeResult()
+```csharp
+public PracticeResult ParsePracticeText(string rawText)
+{
+    var result = new PracticeResult();
 
     // 1. Extraer Setup
-    result.Wings      = ExtractNumber(rawText, "Wings?:\s*(\d+)")
-    result.Engine     = ExtractNumber(rawText, "Engine:\s*(\d+)")
-    result.Brakes     = ExtractNumber(rawText, "Brakes?:\s*(\d+)")
-    result.Gear       = ExtractNumber(rawText, "Gear:\s*(\d+)")
-    result.Suspension = ExtractNumber(rawText, "Suspension:\s*(\d+)")
-    
-    // 2. Extraer Estrategia
-    result.TyreCompound = ExtractString(rawText, "Tyres?\s*(?:used)?:\s*(.+)")
-    result.FuelLoad     = ExtractNumber(rawText, "Fuel\s*(?:load)?:\s*(\d+)")
-    
-    // 3. Extraer Condiciones
-    result.Temperature = ExtractNumber(rawText, "(\d+)\s*°?\s*C")
-    result.Humidity    = ExtractNumber(rawText, "Humidity\s*:?\s*(\d+)")
-    
-    // 4. Extraer Tiempos de Vuelta
-    result.LapTimes = ExtractAllMatches(rawText, "(\d+:\d{2}\.\d{3})")
-    
-    // 5. Extraer y Analizar Feedback
-    feedbackText = ExtractFeedbackBlock(rawText)
-    result.Feedback = AnalyzeFeedback(feedbackText)
-    
-    // 6. Validar completitud
-    IF result.HasMissingFields()
-        result.Warnings.Add("Campos faltantes: " + result.GetMissingFields())
-    
-    RETURN result
+    result.Setup = new SetupData
+    {
+        Wings      = ExtractNumber(rawText, @"Wings?:\s*(\d+)"),
+        Engine     = ExtractNumber(rawText, @"Engine:\s*(\d+)"),
+        Brakes     = ExtractNumber(rawText, @"Brakes?:\s*(\d+)"),
+        Gear       = ExtractNumber(rawText, @"Gear:\s*(\d+)"),
+        Suspension = ExtractNumber(rawText, @"Suspension:\s*(\d+)")
+    };
 
-END FUNCTION
+    // 2. Extraer Estrategia
+    result.Strategy = new StrategyData
+    {
+        TyreCompound = ExtractString(rawText, @"Tyres?\s*(?:used)?:\s*(.+)"),
+        FuelLoad     = ExtractNumber(rawText, @"Fuel\s*(?:load)?:\s*(\d+)")
+    };
+
+    // 3. Extraer Condiciones
+    result.Conditions = new ConditionsData
+    {
+        Temperature = ExtractNumber(rawText, @"(\d+)\s*°?\s*C"),
+        Humidity    = ExtractNumber(rawText, @"Humidity\s*:?\s*(\d+)\s*%")
+    };
+
+    // 4. Extraer Tiempos de Vuelta
+    result.LapTimes = ExtractAllMatches(rawText, @"(\d+:\d{2}\.\d{3})");
+
+    // 5. Extraer y Analizar Feedback
+    var feedbackText = ExtractFeedbackBlock(rawText);
+    result.Feedback = AnalyzeFeedback(feedbackText);
+
+    // 6. Validar completitud
+    var missingFields = result.GetMissingFields();
+    if (missingFields.Any())
+        result.Warnings.Add($"Campos faltantes: {string.Join(", ", missingFields)}");
+
+    return result;
+}
+
+private int? ExtractNumber(string text, string pattern)
+{
+    var match = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
+    return match.Success && int.TryParse(match.Groups[1].Value, out var value)
+        ? value
+        : null;
+}
+
+private string? ExtractString(string text, string pattern)
+{
+    var match = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
+    return match.Success ? match.Groups[1].Value.Trim() : null;
+}
+
+private List<string> ExtractAllMatches(string text, string pattern)
+{
+    return Regex.Matches(text, pattern)
+        .Select(m => m.Groups[1].Value)
+        .ToList();
+}
 ```
 
 ---
