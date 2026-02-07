@@ -315,7 +315,7 @@ Caso: 40% de lluvia, sin Rain tyres en pit stops
 
 Si la calculadora tiene datos para esta pista/temporada, comparar automáticamente el setup del novato contra lo que la calculadora calculó como óptimo.
 
-$$\text{Desviación} = \frac{1}{N} \sum_{i=1}^{N} \left| \frac{\text{Setup}_{alumno,i} - \text{Setup}_{calc,i}}{\text{Setup}_{calc,i}} \right| \times 100$$
+$$\text{Desviación} = \frac{1}{6} \sum_{i=1}^{6} \left| \frac{\text{Setup}_{alumno,i} - \text{Setup}_{calc,i}}{\text{Setup}_{calc,i}} \right| \times 100$$
 
 ### Código
 
@@ -334,10 +334,11 @@ public ValidationResult ValidateAgainstCalculator(SetupData setup, RaceInfo race
         );
     }
 
-    // 2. Calcular desviación por componente
+    // 2. Calcular desviación por componente (6 de GPRO)
     var deviations = new Dictionary<string, decimal>
     {
-        ["Wings"]      = CalcDeviation(setup.Wings, calcSetup.Wings),
+        ["FrontWing"]  = CalcDeviation(setup.FrontWing, calcSetup.FrontWing),
+        ["RearWing"]   = CalcDeviation(setup.RearWing, calcSetup.RearWing),
         ["Engine"]     = CalcDeviation(setup.Engine, calcSetup.Engine),
         ["Brakes"]     = CalcDeviation(setup.Brakes, calcSetup.Brakes),
         ["Gear"]       = CalcDeviation(setup.Gear, calcSetup.Gear),
@@ -353,7 +354,7 @@ public ValidationResult ValidateAgainstCalculator(SetupData setup, RaceInfo race
             level: Severity.Warning,
             message: "🟡 Setup muy desviado de la calculadora",
             detail: $"Desviación promedio: {avgDeviation:F1}%",
-            suggestion: $"Revisa los valores — la calculadora sugiere W:{calcSetup.Wings}...",
+            suggestion: $"Revisa los valores — la calculadora sugiere FW:{calcSetup.FrontWing} RW:{calcSetup.RearWing}...",
             deviations: deviations
         );
     }
@@ -378,22 +379,23 @@ private static decimal CalcDeviation(int actual, int expected)
 ### Ejemplo Visual
 
 ```
-Caso: Novato pone Wings: 35, Calculadora dice Wings: 52
+Caso: Novato pone Front Wing: 35, Calculadora dice Front Wing: 52
 
   ┌─────────────────────────────────────────────────┐
   │  🟡 AVISO — CRUCE CON CALCULADORA               │
   │                                                  │
   │  🔗 La calculadora tiene datos para Monaco S98  │
   │                                                  │
-  │  Componente │ Calculado │  Tuyo  │ Desvío        │
-  │  ───────────┼───────────┼────────┼──────────     │
-  │  Wings      │    52     │   35   │ 🔴 32.7%     │
-  │  Engine     │   700     │  800   │ 🔴 14.3%     │
-  │  Brakes     │   345     │  280   │ 🔴 18.8%     │
-  │  Gear       │   155     │  120   │ 🔴 22.6%     │
-  │  Suspension │    68     │   90   │ 🔴 32.4%     │
-  │  ───────────┼───────────┼────────┼──────────     │
-  │  Promedio   │           │        │ 🔴 24.2%     │
+  │  Componente  │ Calculado │  Tuyo  │ Desvío       │
+  │  ────────────┼───────────┼────────┼──────────   │
+  │  Front Wing  │    52     │   35   │ 🔴 32.7%    │
+  │  Rear Wing   │    40     │   42   │ ✅  5.0%    │
+  │  Engine      │   700     │  800   │ 🔴 14.3%    │
+  │  Brakes      │   345     │  280   │ 🔴 18.8%    │
+  │  Gear        │   155     │  120   │ 🔴 22.6%    │
+  │  Suspension  │    68     │   90   │ 🔴 32.4%    │
+  │  ────────────┼───────────┼────────┼──────────   │
+  │  Promedio    │           │        │ 🔴 20.9%    │
   │                                                  │
   │  💡 Tu setup se desvía mucho de lo calculado.   │
   │     Consulta con tu mentor antes de aplicarlo.   │
@@ -440,7 +442,7 @@ Caso: Novato pone Wings: 35, Calculadora dice Wings: 52
 │  │                                                       │  │
 │  │  🔗 Calculadora                                       │  │
 │  │  🟡 WARNING — Desviación 24.2% vs setup calculado    │  │
-│  │  → Sugerencia: Revisa Wings y Gear                   │  │
+│  │  → Sugerencia: Revisa Front Wing y Gear                │  │
 │  │                                                       │  │
 │  └───────────────────────────────────────────────────────┘  │
 │                                                             │

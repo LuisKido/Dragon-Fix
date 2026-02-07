@@ -45,7 +45,7 @@ Recibe texto crudo y retorna datos parseados.
 
 ```json
 {
-  "rawText": "Practice results\nLap  Time       Mistake  Net time\n1    1:22.456   0.120s   1:22.576\n\nSetup used:\nWings: 45\nEngine: 680\nBrakes: 320\nGear: 140\nSuspension: 72\n\nTyres used: Extra Soft\nFuel load: 35 lts\n\nWeather: 28°C, Humidity 45%, Clouds: 10%\n\nDriver feedback:\n\"The car understeers in slow corners. I need more front wing.\nThe brakes feel too soft.\"",
+  "rawText": "Practice results\nLap  Time       Mistake  Net time\n1    1:22.456   0.120s   1:22.576\n\nSetup used:\nFront wing: 45\nRear wing: 38\nEngine: 680\nBrakes: 320\nGear: 140\nSuspension: 72\n\nTyres used: Extra Soft\nFuel load: 35 lts\n\nWeather: 28°C, Humidity 45%, Clouds: 10%\n\nDriver feedback:\n\"The car understeers in slow corners. I need more front wing.\nThe brakes feel too soft.\"",
   "studentId": 1,
   "raceId": 5
 }
@@ -58,7 +58,8 @@ Recibe texto crudo y retorna datos parseados.
   "success": true,
   "data": {
     "setup": {
-      "wings": 45,
+      "frontWing": 45,
+      "rearWing": 38,
       "engine": 680,
       "brakes": 320,
       "gear": 140,
@@ -88,7 +89,7 @@ Recibe texto crudo y retorna datos parseados.
       "raw": "The car understeers in slow corners...",
       "suggestions": [
         {
-          "component": "Wings",
+          "component": "FrontWing",
           "action": "INCREASE",
           "reason": "Understeer detected",
           "priority": "HIGH"
@@ -116,7 +117,7 @@ Recibe texto crudo y retorna datos parseados.
     "code": "PARSE_FAILED",
     "message": "No se pudo reconocer el formato del texto",
     "details": [
-      "No se encontró el campo 'Wings'",
+      "No se encontró el campo 'FrontWing'",
       "No se encontró el campo 'Engine'"
     ]
   }
@@ -144,7 +145,8 @@ Recibe una captura de pantalla de la app móvil de GPRO y extrae los datos via O
   "success": true,
   "data": {
     "setup": {
-      "wings": 45,
+      "frontWing": 45,
+      "rearWing": 38,
       "engine": 680,
       "brakes": 320,
       "gear": 140,
@@ -215,7 +217,8 @@ Valida la estrategia completa de un alumno.
 ```json
 {
   "setup": {
-    "wings": 45,
+    "frontWing": 45,
+    "rearWing": 38,
     "engine": 680,
     "brakes": 320,
     "gear": 140,
@@ -302,11 +305,12 @@ Valida la estrategia completa de un alumno.
         "level": "WARNING",
         "message": "Setup desviado de la Base de Oro",
         "detail": "Desviación promedio: 8.2%",
-        "suggestion": "Revisa Wings (-7) y Suspension (+4)",
+        "suggestion": "Revisa FrontWing (-7), RearWing (-5) y Suspension (+4)",
         "data": {
           "deviationPercent": 8.2,
           "deviations": {
-            "wings": { "baseline": 52, "current": 45, "percent": 13.5 },
+            "frontWing": { "baseline": 52, "current": 45, "percent": 13.5 },
+            "rearWing": { "baseline": 38, "current": 33, "percent": 13.2 },
             "engine": { "baseline": 700, "current": 680, "percent": 2.9 },
             "brakes": { "baseline": 345, "current": 320, "percent": 7.2 },
             "gear": { "baseline": 155, "current": 140, "percent": 9.7 },
@@ -337,7 +341,8 @@ Crea un nuevo registro de carrera.
   "raceId": 5,
   "rawPracticeText": "...(texto crudo)...",
   "setup": {
-    "wings": 52,
+    "frontWing": 52,
+    "rearWing": 38,
     "engine": 700,
     "brakes": 345,
     "gear": 155,
@@ -394,7 +399,7 @@ Crea un nuevo registro de carrera.
       "raceNumber": 5,
       "seasonNumber": 98
     },
-    "setup": { "wings": 52, "engine": 700, "brakes": 345, "gear": 155, "suspension": 68 },
+    "setup": { "frontWing": 52, "rearWing": 38, "engine": 700, "brakes": 345, "gear": 155, "suspension": 68 },
     "strategy": { "tyreCompound": "Medium", "fuelLoad": 45.0 },
     "validationStatus": "VALID",
     "validationAlerts": [],
@@ -431,14 +436,14 @@ Vista comparativa de todos los alumnos para una carrera.
       }
     },
     "baseline": {
-      "wings": 52, "engine": 700, "brakes": 345,
+      "frontWing": 52, "rearWing": 38, "engine": 700, "brakes": 345,
       "gear": 155, "suspension": 68,
       "recommendedCompound": "Medium"
     },
     "entries": [
       {
         "student": { "id": 1, "username": "Pedro" },
-        "setup": { "wings": 50, "engine": 710, "brakes": 340, "gear": 150, "suspension": 65 },
+        "setup": { "frontWing": 50, "rearWing": 36, "engine": 710, "brakes": 340, "gear": 150, "suspension": 65 },
         "strategy": { "tyreCompound": "Medium", "fuelLoad": 44.0 },
         "deviationPercent": 3.2,
         "status": "VALID",
@@ -446,7 +451,7 @@ Vista comparativa de todos los alumnos para una carrera.
       },
       {
         "student": { "id": 3, "username": "Carlos" },
-        "setup": { "wings": 35, "engine": 800, "brakes": 280, "gear": 120, "suspension": 90 },
+        "setup": { "frontWing": 35, "rearWing": 22, "engine": 800, "brakes": 280, "gear": 120, "suspension": 90 },
         "strategy": { "tyreCompound": "Extra Soft", "fuelLoad": 30.0 },
         "deviationPercent": 22.4,
         "status": "CRITICAL",
@@ -533,7 +538,8 @@ Evolución individual de un alumno.
   "trackId": 12,
   "seasonId": 98,
   "mentorId": 1,
-  "wings": 52,
+  "frontWing": 52,
+  "rearWing": 38,
   "engine": 700,
   "brakes": 345,
   "gear": 155,
@@ -566,7 +572,7 @@ Mentor revisa un registro.
 ```json
 {
   "mentorId": 1,
-  "notes": "Wings muy bajo para Monaco. Hablar con Carlos sobre downforce en circuitos urbanos.",
+  "notes": "FrontWing muy bajo para Monaco. Hablar con Carlos sobre downforce en circuitos urbanos.",
   "approved": false
 }
 ```
@@ -612,7 +618,8 @@ Auto-genera la Base de Oro desde el último cálculo de la calculadora.
     "source": "CALCULATOR",
     "calcSessionId": 234,
     "setup": {
-      "wings": 52,
+      "frontWing": 52,
+      "rearWing": 38,
       "engine": 700,
       "brakes": 345,
       "gear": 155,
@@ -652,16 +659,17 @@ Compara el setup del alumno contra lo que calculó la herramienta.
     "student": "Carlos",
     "track": "Monaco",
     "calculated": {
-      "wings": 52, "engine": 700, "brakes": 345,
+      "frontWing": 52, "rearWing": 38, "engine": 700, "brakes": 345,
       "gear": 155, "suspension": 68,
       "sessionId": 234
     },
     "actual": {
-      "wings": 35, "engine": 800, "brakes": 280,
+      "frontWing": 35, "rearWing": 22, "engine": 800, "brakes": 280,
       "gear": 120, "suspension": 90
     },
     "deviations": {
-      "wings": { "diff": -17, "percent": 32.7 },
+      "frontWing": { "diff": -17, "percent": 32.7 },
+      "rearWing": { "diff": -16, "percent": 42.1 },
       "engine": { "diff": 100, "percent": 14.3 },
       "brakes": { "diff": -65, "percent": 18.8 },
       "gear": { "diff": -35, "percent": 22.6 },

@@ -110,7 +110,8 @@ La calculadora ya tiene datos que Fix Academy necesita. Este es el mapeo:
 | `Id` | `INT` | PK, Identity | Identificador |
 | `EntryId` | `INT` | FK → StudentRaceEntries | Registro del alumno |
 | `CalcSessionId` | `INT` | FK → CalcSessions* | Sesión de la calculadora |
-| `CalcWings` | `INT` | NOT NULL | Wings que calculó la herramienta |
+| `CalcFrontWing` | `INT` | NOT NULL | FrontWing que calculó la herramienta |
+| `CalcRearWing` | `INT` | NOT NULL | RearWing que calculó la herramienta |
 | `CalcEngine` | `INT` | NOT NULL | Engine calculado |
 | `CalcBrakes` | `INT` | NOT NULL | Brakes calculado |
 | `CalcGear` | `INT` | NOT NULL | Gear calculado |
@@ -164,8 +165,8 @@ Trigger: Al guardar un cálculo, si el mentor tiene flag "auto-baseline":
                                           ┌────────▼─────────┐
                                           │  Comparativa:    │
                                           │                  │
-                                          │  Calculado: W:52 │
-                                          │  Parseado:  W:45 │
+                                          │  Calculado: FW:52 RW:38 │
+                                          │  Parseado:  FW:45 RW:33 │
                                           │  Diff:      -7   │
                                           │  Desvío:  13.5%  │
                                           └──────────────────┘
@@ -202,7 +203,8 @@ public async Task<string> SyncBaselineFromCalculatorAsync(int mentorId, int trac
     // 2. Crear o actualizar la Base de Oro
     var baseline = await _baselines.FindOrCreateAsync(trackId, seasonId, mentorId);
 
-    baseline.Wings          = calcSetup.Wings;
+    baseline.FrontWing      = calcSetup.FrontWing;
+    baseline.RearWing       = calcSetup.RearWing;
     baseline.Engine         = calcSetup.Engine;
     baseline.Brakes         = calcSetup.Brakes;
     baseline.Gear           = calcSetup.Gear;
@@ -238,7 +240,8 @@ public async Task<ComparisonResult> CompareWithCalculatorAsync(int entryId)
     // 2. Calcular desviaciones
     var deviations = new Dictionary<string, decimal>
     {
-        ["Wings"]      = CalcDeviation(setup.Wings, calcSetup.Wings),
+        ["FrontWing"]  = CalcDeviation(setup.FrontWing, calcSetup.FrontWing),
+        ["RearWing"]   = CalcDeviation(setup.RearWing, calcSetup.RearWing),
         ["Engine"]     = CalcDeviation(setup.Engine, calcSetup.Engine),
         ["Brakes"]     = CalcDeviation(setup.Brakes, calcSetup.Brakes),
         ["Gear"]       = CalcDeviation(setup.Gear, calcSetup.Gear),
@@ -252,7 +255,8 @@ public async Task<ComparisonResult> CompareWithCalculatorAsync(int entryId)
     {
         EntryId          = entryId,
         CalcSessionId    = calcSetup.SessionId,
-        CalcWings        = calcSetup.Wings,
+        CalcFrontWing    = calcSetup.FrontWing,
+        CalcRearWing     = calcSetup.RearWing,
         CalcEngine       = calcSetup.Engine,
         CalcBrakes       = calcSetup.Brakes,
         CalcGear         = calcSetup.Gear,
@@ -285,10 +289,10 @@ private static decimal CalcDeviation(int actual, int expected)
 SELECT 
     s.Username,
     -- Setup que usó
-    su.Wings AS UsedWings, su.Engine AS UsedEngine, 
+    su.FrontWing AS UsedFrontWing, su.RearWing AS UsedRearWing, su.Engine AS UsedEngine, 
     su.Brakes AS UsedBrakes, su.Gear AS UsedGear, su.Suspension AS UsedSusp,
     -- Setup calculado
-    cl.CalcWings, cl.CalcEngine, cl.CalcBrakes, cl.CalcGear, cl.CalcSuspension,
+    cl.CalcFrontWing, cl.CalcRearWing, cl.CalcEngine, cl.CalcBrakes, cl.CalcGear, cl.CalcSuspension,
     -- Desviación
     cl.DeviationPercent,
     -- Resultado
@@ -327,7 +331,8 @@ ORDER BY cl.DeviationPercent ASC;
 │  │                                                           │  │
 │  │  Componente │ Calculadora │  Usado  │  Diff  │ Desvío    │  │
 │  │  ───────────┼─────────────┼─────────┼────────┼─────────  │  │
-│  │  Wings      │     52      │   35    │  -17   │ 🔴 32.7%  │  │
+│  │  FrontWing  │     52      │   35    │  -17   │ 🔴 32.7%  │  │
+│  │  RearWing   │     38      │   22    │  -16   │ 🔴 42.1%  │  │
 │  │  Engine     │    700      │  800    │ +100   │ 🔴 14.3%  │  │
 │  │  Brakes     │    345      │  280    │  -65   │ 🔴 18.8%  │  │
 │  │  Gear       │    155      │  120    │  -35   │ 🔴 22.6%  │  │

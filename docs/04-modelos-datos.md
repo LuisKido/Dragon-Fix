@@ -52,8 +52,8 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
     │─────────────│  │───────────│  │──────────────│
     │ Id (PK)     │  │ Id (PK)   │  │ Id (PK)      │
     │ EntryId(FK) │  │ EntryId   │  │ EntryId(FK)  │
-    │ Wings       │  │ Compound  │  │ QualifyPos   │
-    │ Engine      │  │ FuelLoad  │  │ StartPos     │
+    │ FrontWing   │  │ Compound  │  │ QualifyPos   │
+    │ RearWing    │  │ FuelLoad  │  │ StartPos     │
     │ Brakes      │  │ WetSetup  │  │ FinishPos    │
     │ Gear        │  └───────┬───┘  │ BestLap      │
     │ Suspension  │          │      │ IsDNF        │
@@ -158,7 +158,8 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
 |---------|------|------|-------------|
 | `Id` | `INT` | PK, Identity | Identificador |
 | `EntryId` | `INT` | FK → StudentRaceEntries | Entrada relacionada |
-| `Wings` | `INT` | NOT NULL | Valor de alerón |
+| `FrontWing` | `INT` | NOT NULL | Valor de alerón delantero |
+| `RearWing` | `INT` | NOT NULL | Valor de alerón trasero |
 | `Engine` | `INT` | NOT NULL | Valor de motor |
 | `Brakes` | `INT` | NOT NULL | Valor de frenos |
 | `Gear` | `INT` | NOT NULL | Valor de caja |
@@ -219,7 +220,8 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
 | `TrackId` | `INT` | FK → Tracks | Circuito |
 | `SeasonId` | `INT` | FK → Seasons | Temporada |
 | `MentorId` | `INT` | FK → Mentors | Mentor |
-| `Wings` | `INT` | NOT NULL | Wings de referencia |
+| `FrontWing` | `INT` | NOT NULL | FrontWing de referencia |
+| `RearWing` | `INT` | NOT NULL | RearWing de referencia |
 | `Engine` | `INT` | NOT NULL | Engine de referencia |
 | `Brakes` | `INT` | NOT NULL | Brakes de referencia |
 | `Gear` | `INT` | NOT NULL | Gear de referencia |
@@ -241,7 +243,7 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
 | `Id` | `INT` | PK, Identity | Identificador |
 | `EntryId` | `INT` | FK → StudentRaceEntries | Entrada |
 | `RawFeedback` | `NVARCHAR(MAX)` | NOT NULL | Texto original |
-| `Component` | `NVARCHAR(20)` | NOT NULL | Wings/Engine/Brakes/Gear/Suspension |
+| `Component` | `NVARCHAR(20)` | NOT NULL | FrontWing/RearWing/Engine/Brakes/Gear/Suspension |
 | `Action` | `NVARCHAR(10)` | NOT NULL | INCREASE / DECREASE / OK |
 | `Priority` | `NVARCHAR(10)` | NOT NULL | HIGH / MEDIUM / LOW |
 | `Reason` | `NVARCHAR(200)` | NULL | Razón interpretada |
@@ -257,7 +259,8 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
 | `Id` | `INT` | PK, Identity | Identificador |
 | `EntryId` | `INT` | FK → StudentRaceEntries | Registro del alumno |
 | `CalcSessionId` | `INT` | NOT NULL | ID de la sesión en la calculadora |
-| `CalcWings` | `INT` | NOT NULL | Wings que calculó la herramienta |
+| `CalcFrontWing` | `INT` | NOT NULL | FrontWing que calculó la herramienta |
+| `CalcRearWing` | `INT` | NOT NULL | RearWing que calculó la herramienta |
 | `CalcEngine` | `INT` | NOT NULL | Engine calculado |
 | `CalcBrakes` | `INT` | NOT NULL | Brakes calculado |
 | `CalcGear` | `INT` | NOT NULL | Gear calculado |
@@ -352,7 +355,8 @@ CREATE TABLE StudentRaceEntries (
 CREATE TABLE Setups (
     Id          INT IDENTITY(1,1) PRIMARY KEY,
     EntryId     INT NOT NULL REFERENCES StudentRaceEntries(Id),
-    Wings       INT NOT NULL,
+    FrontWing   INT NOT NULL,
+    RearWing    INT NOT NULL,
     Engine      INT NOT NULL,
     Brakes      INT NOT NULL,
     Gear        INT NOT NULL,
@@ -397,7 +401,8 @@ CREATE TABLE SetupBaselines (
     TrackId                 INT NOT NULL REFERENCES Tracks(Id),
     SeasonId                INT NOT NULL REFERENCES Seasons(Id),
     MentorId                INT NOT NULL,
-    Wings                   INT NOT NULL,
+    FrontWing               INT NOT NULL,
+    RearWing                INT NOT NULL,
     Engine                  INT NOT NULL,
     Brakes                  INT NOT NULL,
     Gear                    INT NOT NULL,
@@ -428,7 +433,8 @@ CREATE TABLE CalcSetupLink (
     Id                  INT IDENTITY(1,1) PRIMARY KEY,
     EntryId             INT NOT NULL REFERENCES StudentRaceEntries(Id),
     CalcSessionId       INT NOT NULL,  -- FK lógica a la BD de la calculadora
-    CalcWings           INT NOT NULL,
+    CalcFrontWing       INT NOT NULL,
+    CalcRearWing        INT NOT NULL,
     CalcEngine          INT NOT NULL,
     CalcBrakes          INT NOT NULL,
     CalcGear            INT NOT NULL,
@@ -465,7 +471,7 @@ CREATE INDEX IX_CalcTrackSync_Track ON CalcTrackSync(ReviewerTrackId);
 ```sql
 SELECT 
     s.Username,
-    su.Wings, su.Engine, su.Brakes, su.Gear, su.Suspension,
+    su.FrontWing, su.RearWing, su.Engine, su.Brakes, su.Gear, su.Suspension,
     e.ValidationStatus,
     e.ReviewedByMentor
 FROM StudentRaceEntries e
@@ -480,7 +486,8 @@ ORDER BY s.Username;
 ```sql
 SELECT 
     s.Username,
-    ABS(su.Wings - b.Wings) * 100.0 / b.Wings AS WingsDev,
+    ABS(su.FrontWing - b.FrontWing) * 100.0 / b.FrontWing AS FrontWingDev,
+    ABS(su.RearWing - b.RearWing) * 100.0 / b.RearWing AS RearWingDev,
     ABS(su.Engine - b.Engine) * 100.0 / b.Engine AS EngineDev,
     ABS(su.Brakes - b.Brakes) * 100.0 / b.Brakes AS BrakesDev,
     ABS(su.Gear - b.Gear) * 100.0 / b.Gear AS GearDev,
@@ -498,8 +505,8 @@ WHERE e.RaceId = @RaceId;
 ```sql
 SELECT 
     s.Username,
-    su.Wings AS UsedWings, su.Engine AS UsedEngine,
-    cl.CalcWings, cl.CalcEngine,
+    su.FrontWing AS UsedFrontWing, su.RearWing AS UsedRearWing, su.Engine AS UsedEngine,
+    cl.CalcFrontWing, cl.CalcRearWing, cl.CalcEngine,
     cl.DeviationPercent,
     rr.StartPosition, rr.FinishPosition, rr.PositionsGained,
     CASE 

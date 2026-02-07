@@ -41,7 +41,8 @@ Lap  Time       Mistake  Net time
 1    1:22.456   0.120s   1:22.576
 
 Setup used:
-Wings: 45
+Front wing: 45
+Rear wing: 38
 Engine: 680
 Brakes: 320
 Gear: 140
@@ -172,7 +173,8 @@ Las capturas de la app móvil pueden tener elementos que dificultan la lectura:
 
 | Campo | Regex Pattern | Ejemplo Match |
 |-------|--------------|---------------|
-| **Wings** | `Wings?:\s*(\d+)` | `Wings: 45` → `45` |
+| **Front Wing** | `Front\s*wing:\s*(\d+)` | `Front wing: 45` → `45` |
+| **Rear Wing** | `Rear\s*wing:\s*(\d+)` | `Rear wing: 38` → `38` |
 | **Engine** | `Engine:\s*(\d+)` | `Engine: 680` → `680` |
 | **Brakes** | `Brakes?:\s*(\d+)` | `Brakes: 320` → `320` |
 | **Gear** | `Gear:\s*(\d+)` | `Gear: 140` → `140` |
@@ -190,10 +192,10 @@ El feedback del piloto se traduce a **acciones concretas sobre el setup**:
 
 | Frase del Piloto | Componente | Acción |
 |-------------------|-----------|--------|
-| *"I need more wing"* | Wings | ⬆️ Subir 1-3 puntos |
-| *"Too much wing"* / *"The car is too slow on straights"* | Wings | ⬇️ Bajar 1-3 puntos |
-| *"The car understeers"* | Wings | ⬆️ Subir front wing |
-| *"The car oversteers"* | Wings | ⬇️ Bajar front wing |
+| *"I need more wing"* | Front Wing / Rear Wing | ⬆️ Subir 1-3 puntos |
+| *"Too much wing"* / *"The car is too slow on straights"* | Front Wing / Rear Wing | ⬇️ Bajar 1-3 puntos |
+| *"The car understeers"* | Front Wing | ⬆️ Subir front wing |
+| *"The car oversteers"* | Front Wing | ⬇️ Bajar front wing / ⬆️ Subir rear wing |
 | *"Brakes feel too soft"* | Brakes | ⬆️ Subir brakes |
 | *"Brakes are locking up"* | Brakes | ⬇️ Bajar brakes |
 | *"Engine is too hot"* / *"running hot"* | Engine | ⬇️ Bajar engine |
@@ -212,10 +214,11 @@ public PracticeResult ParsePracticeText(string rawText)
 {
     var result = new PracticeResult();
 
-    // 1. Extraer Setup
+    // 1. Extraer Setup (6 componentes de GPRO)
     result.Setup = new SetupData
     {
-        Wings      = ExtractNumber(rawText, @"Wings?:\s*(\d+)"),
+        FrontWing  = ExtractNumber(rawText, @"Front\s*wing:\s*(\d+)"),
+        RearWing   = ExtractNumber(rawText, @"Rear\s*wing:\s*(\d+)"),
         Engine     = ExtractNumber(rawText, @"Engine:\s*(\d+)"),
         Brakes     = ExtractNumber(rawText, @"Brakes?:\s*(\d+)"),
         Gear       = ExtractNumber(rawText, @"Gear:\s*(\d+)"),
@@ -355,7 +358,8 @@ private List<string> ExtractAllMatches(string text, string pattern)
 ```json
 {
   "setup": {
-    "wings": 45,
+    "frontWing": 45,
+    "rearWing": 38,
     "engine": 680,
     "brakes": 320,
     "gear": 140,
@@ -379,7 +383,7 @@ private List<string> ExtractAllMatches(string text, string pattern)
     "raw": "The car understeers in slow corners...",
     "suggestions": [
       {
-        "component": "Wings",
+        "component": "FrontWing",
         "action": "INCREASE",
         "reason": "Understeer detected",
         "priority": "HIGH"
@@ -398,7 +402,7 @@ private List<string> ExtractAllMatches(string text, string pattern)
   "ocrConfidence": null,
   "calculatorComparison": {
     "available": true,
-    "calcSetup": { "wings": 52, "engine": 700, "brakes": 345, "gear": 155, "suspension": 68 },
+    "calcSetup": { "frontWing": 52, "rearWing": 40, "engine": 700, "brakes": 345, "gear": 155, "suspension": 68 },
     "avgDeviation": 24.2,
     "note": "🔗 Datos cruzados automáticamente con la calculadora"
   }
@@ -443,18 +447,18 @@ private List<string> ExtractAllMatches(string text, string pattern)
 │                                                             │
 │  Setup                    │  Estrategia                     │
 │  ────────────────────     │  ────────────────               │
-│  Wings:      45           │  Neumáticos: Extra Soft         │
-│  Engine:    680           │  Combustible: 35 lts            │
-│  Brakes:   320           │                                  │
-│  Gear:     140           │  Condiciones                     │
-│  Suspension: 72          │  ────────────────                │
-│                           │  Temp: 28°C                     │
+│  Front Wing: 45           │  Neumáticos: Extra Soft         │
+│  Rear Wing:  38           │  Combustible: 35 lts            │
+│  Engine:    680           │                                  │
+│  Brakes:   320           │  Condiciones                     │
+│  Gear:     140           │  ────────────────                │
+│  Suspension: 72          │  Temp: 28°C                     │
 │                           │  Humedad: 45%                   │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │  💡 Sugerencias del Feedback:                              │
 │                                                             │
-│  🔴 ALTA   Wings ⬆️  — Substeering detectado               │
+│  🔴 ALTA   Front Wing ⬆️  — Substeering detectado          │
 │  🟡 MEDIA  Brakes ⬆️ — Frenos muy blandos                  │
 │                                                             │
 │  [ 💾 Guardar Setup ]  [ ➡️ Enviar a Validador ]            │
@@ -473,7 +477,7 @@ private List<string> ExtractAllMatches(string text, string pattern)
 | Solo algunos campos | Warning + parseo parcial |
 | Feedback en español | Soporte bilingüe de keywords |
 | Múltiples laps | Extraer todos, usar mejor tiempo |
-| Valores fuera de rango (ej: Wings: 999) | Warning: "Valor inusual" |
+| Valores fuera de rango (ej: FrontWing: 999) | Warning: "Valor inusual" |
 | 📸 Imagen borrosa / baja resolución | Error: "Captura no legible" + sugerir texto manual |
 | 📸 Captura en modo oscuro | Pre-procesamiento: inversión de colores |
 | 📸 Captura con notificaciones encima | Detección de overlay + recorte |
