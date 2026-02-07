@@ -17,6 +17,7 @@ Contratos REST API en formato JSON estándar para integrar el módulo **Fix Acad
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `POST` | `/parser/parse` | Parsear texto crudo de práctica |
+| `POST` | `/parser/parse-screenshot` | 📸 Parsear captura de pantalla de app móvil GPRO |
 | `POST` | `/validator/validate` | Validar estrategia completa |
 | `POST` | `/entries` | Crear registro de carrera para alumno |
 | `GET` | `/entries/{id}` | Obtener registro específico |
@@ -118,6 +119,85 @@ Recibe texto crudo y retorna datos parseados.
       "No se encontró el campo 'Wings'",
       "No se encontró el campo 'Engine'"
     ]
+  }
+}
+```
+
+---
+
+### `POST /parser/parse-screenshot` 📸
+
+Recibe una captura de pantalla de la app móvil de GPRO y extrae los datos via OCR.
+
+**Request:** `multipart/form-data`
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `screenshot` | `File` | ✅ | Imagen PNG, JPG o WebP. Máx 10 MB |
+| `studentId` | `INT` | ✅ | ID del alumno |
+| `raceId` | `INT` | ✅ | ID de la carrera |
+
+**Response `200 OK`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "setup": {
+      "wings": 45,
+      "engine": 680,
+      "brakes": 320,
+      "gear": 140,
+      "suspension": 72
+    },
+    "strategy": {
+      "tyreCompound": "Extra Soft",
+      "fuelLoad": 35.0
+    },
+    "conditions": {
+      "temperature": 28,
+      "humidity": 45
+    },
+    "performance": {
+      "bestLap": "1:22.456"
+    },
+    "feedback": {
+      "raw": "The car understeers...",
+      "suggestions": []
+    },
+    "parseConfidence": 0.88,
+    "source": "SCREENSHOT",
+    "ocrConfidence": 0.91,
+    "warnings": [
+      "⚠️ Confianza OCR media (91%). Verifica los valores."
+    ]
+  }
+}
+```
+
+**Response `422 Unprocessable` (OCR falla):**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "OCR_FAILED",
+    "message": "No se pudo leer la captura con suficiente confianza",
+    "ocrConfidence": 0.45,
+    "suggestion": "Intenta con una captura más nítida o pega el texto manualmente"
+  }
+}
+```
+
+**Response `400 Bad Request` (formato inválido):**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_IMAGE",
+    "message": "Formato de imagen no soportado. Usa PNG, JPG o WebP.",
+    "maxSizeMB": 10
   }
 }
 ```

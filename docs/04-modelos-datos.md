@@ -163,7 +163,8 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
 | `Brakes` | `INT` | NOT NULL | Valor de frenos |
 | `Gear` | `INT` | NOT NULL | Valor de caja |
 | `Suspension` | `INT` | NOT NULL | Valor de suspensión |
-| `Source` | `NVARCHAR(20)` | NOT NULL | PARSED / MANUAL / CALCULATOR |
+| `Source` | `NVARCHAR(20)` | NOT NULL | PARSED / MANUAL / CALCULATOR / SCREENSHOT |
+| `OcrConfidence` | `DECIMAL(3,2)` | NULL | Confianza del OCR si la fuente es SCREENSHOT (0.00–1.00) |
 
 ---
 
@@ -285,7 +286,7 @@ Esquema de base de datos SQL Server para almacenar toda la información del mód
 ```sql
 -- =============================================
 -- Dragon App — Fix Academy
--- Database Schema v1.1 (con integración Calculadora)
+-- Database Schema v1.2 (con integración Calculadora + OCR Screenshot)
 -- =============================================
 
 CREATE TABLE Seasons (
@@ -356,7 +357,8 @@ CREATE TABLE Setups (
     Brakes      INT NOT NULL,
     Gear        INT NOT NULL,
     Suspension  INT NOT NULL,
-    Source      NVARCHAR(20) NOT NULL DEFAULT 'MANUAL'  -- MANUAL / PARSED / CALCULATOR
+    Source      NVARCHAR(20) NOT NULL DEFAULT 'MANUAL',  -- MANUAL / PARSED / CALCULATOR / SCREENSHOT
+    OcrConfidence DECIMAL(3,2) NULL                        -- Confianza OCR (solo si Source = SCREENSHOT)
 );
 
 CREATE TABLE Strategies (

@@ -14,7 +14,7 @@
 
 | # | Documento | Descripción |
 |---|-----------|-------------|
-| 1 | [Parser de Prácticas](01-parser-practicas.md) | Extracción automática de datos desde texto crudo de GPRO |
+| 1 | [Parser de Prácticas](01-parser-practicas.md) | Extracción de datos desde texto o captura de la app móvil GPRO |
 | 2 | [Validador de Estrategia](02-validador-estrategia.md) | Motor de reglas anti-error para estrategias de carrera |
 | 3 | [Registro Histórico](03-registro-historico.md) | Sistema de seguimiento y comparativas entre alumnos |
 | 4 | [Modelos de Datos](04-modelos-datos.md) | Estructuras de datos y esquema de base de datos |
@@ -32,9 +32,10 @@ Proveer a los mentores de una academia GPRO un sistema integrado para llevar la 
 ┌─────────────────────────────────────────────────────┐
 │                  FLUJO PRINCIPAL                     │
 │                                                     │
-│  Novato pega texto  ──►  Parser extrae datos        │
-│         │                      │                    │
-│         ▼                      ▼                    │
+│  Novato pega texto  ──┐                              │
+│       o               ├─►  Parser extrae datos       │
+│  📸 Sube captura    ──┘        │                    │
+│         │                      ▼                    │
 │  Validador revisa   ◄──  Setup parseado             │
 │  estrategia                    │                    │
 │         │                      │                    │
@@ -52,9 +53,9 @@ Proveer a los mentores de una academia GPRO un sistema integrado para llevar la 
 ### 1. 🔍 Parser de Prácticas
 > *"La joya de la corona"*
 
-El novato pega el texto crudo de la página de prácticas de GPRO y el sistema extrae automáticamente todos los valores del setup y el feedback del piloto.
+El novato pega el texto crudo de la página de prácticas de GPRO **o sube una captura de pantalla desde la app móvil**. El sistema extrae automáticamente todos los valores del setup y el feedback del piloto.
 
-**Problema que resuelve:** Copiar dato por dato es tedioso y propenso a errores de transcripción.
+**Problema que resuelve:** Copiar dato por dato es tedioso y propenso a errores de transcripción. Desde celular, ni siquiera se puede copiar texto.
 
 ### 2. 🛡️ Validador de Estrategia
 > *"El Antierror"*
@@ -120,6 +121,7 @@ La app ya tiene una calculadora de setups con su propia BD. Este módulo **cruza
 setup-reviewer/
 ├── parser/
 │   ├── PracticeParser        # Extrae datos del texto crudo
+│   ├── ScreenshotParser      # 📸 OCR: extrae texto de capturas móvil
 │   ├── FeedbackInterpreter   # Interpreta feedback del piloto
 │   └── SetupMapper           # Mapea a modelo de datos
 ├── validator/
@@ -159,5 +161,5 @@ setup-reviewer/
 <p align="center">
   <strong>Fix Academy</strong> · Módulo de Dragon App
   <br/>
-  <sub>Documentación Técnica v1.1 · Febrero 2026 · Incluye integración con Calculadora</sub>
+  <sub>Documentación Técnica v1.2 · Febrero 2026 · Incluye integración con Calculadora + OCR Capturas Móvil</sub>
 </p>
